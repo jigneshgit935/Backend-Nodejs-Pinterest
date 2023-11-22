@@ -26,7 +26,6 @@ router.post(
     if (!req.file) {
       return res.status(400).send('No files were uploaded');
     }
-    res.send('File uploaded successfully');
 
     const user = await userModel.findOne({
       username: req.session.passport.user,
@@ -38,8 +37,9 @@ router.post(
       user: user._id,
     });
 
-    await user.posts.push(post._id);
-    res.send('done');
+    user.posts.push(post._id);
+    await user.save();
+    res.redirect('/profile');
   }
 );
 
@@ -48,7 +48,9 @@ router.get('/login', function (req, res, next) {
 });
 
 router.get('/profile', isLoggedIn, async function (req, res, next) {
-  const user = await userModel.findOne({ username: req.session.passport.user });
+  const user = await userModel
+    .findOne({ username: req.session.passport.user })
+    .populate('posts');
   res.render('profile', { user });
 });
 
