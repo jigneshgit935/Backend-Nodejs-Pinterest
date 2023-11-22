@@ -3,6 +3,9 @@ var router = express.Router();
 const userModel = require('./users');
 const postModel = require('./post');
 const passport = require('passport');
+
+const upload = require('./multer');
+
 const localStrategy = require('passport-local');
 passport.use(new localStrategy(userModel.authenticate()));
 
@@ -15,12 +18,38 @@ router.get('/feed', function (req, res, next) {
   res.render('feed');
 });
 
+router.post(
+  '/upload',
+  isLoggedIn,
+  upload.single('file'),
+  async function (req, res) {
+    if (!req.file) {
+      return res.status(400).send('No files were uploaded');
+    }
+    res.send('File uploaded successfully');
+
+    const user = await userModel.findOne({
+      username: req.session.passport.user,
+    });
+
+    const post = await postModel.create({
+      image: req.file.filename,
+      imageText: req.body.filecaption,
+      user: user._id,
+    });
+
+    await user.posts.push(post._id);
+    res.send('done');
+  }
+);
+
 router.get('/login', function (req, res, next) {
   res.render('login', { error: req.flash('error') });
 });
 
-router.get('/profile', isLoggedIn, function (req, res, next) {
-  res.render('profile');
+router.get('/profile', isLoggedIn, async function (req, res, next) {
+  const user = await userModel.findOne({ username: req.session.passport.user });
+  res.render('profile', { user });
 });
 
 router.post('/register', function (req, res, next) {
